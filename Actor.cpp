@@ -117,6 +117,67 @@ void IceMan::doSomething(){ //during a tick
                     }
                 }
                 break;
+            case KEY_PRESS_SPACE:
+                if (getWater() > 0) {
+                    getWorld()->playSound(SOUND_PLAYER_SQUIRT);
+                    m_water--; // reduce water by 1
+                    
+                    int newX = getX();
+                    int newY = getY();
+                    
+                    switch (getDirection()) {
+                        case up:    newY += 4; 
+                            setDirection(up);
+                            break;
+                        case down:  
+                            setDirection(down);
+                            newY -= 4; break;
+                        case left:  newX -= 4; 
+                            setDirection(left);
+                            break;
+                        case right: 
+                            setDirection(right);
+                            newX += 4; break;
+                        default: break;
+                    }
+                    
+                    if (newX >= 0 && newX < 64 && newY >= 0 && newY < 60) {
+                        bool blocked = false;
+                        
+                        for (int i = 0; i < 4 && !blocked; ++i) {
+                            for (int j = 0; j < 4 && !blocked; ++j) {
+                                if (getWorld()->iceAt(newX + i, newY + j)) {
+                                    blocked = true;
+                                }
+                            }
+                        }
+                        
+                        for (auto b : getWorld()->getBoulders()) {
+                            if (b && b->isAlive()) {
+                                int dx = b->getX() - newX;
+                                int dy = b->getY() - newY;
+                                if (sqrt(dx*dx + dy*dy) <= 3.0) {
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // if not blocked, spawn a new Squirt
+                        if (!blocked) {
+                            Squirt* s = new Squirt(getWorld(), newX, newY, getDirection());
+                            getWorld()->addActor(s);
+                        }
+                    }
+                }
+                break;
+            case 'z':
+                if (getSonar() > 0) {
+                    getWorld()->revealAllNearbyObjects(12, getX(), getY());
+                    m_sonar--;
+                    getWorld()->playSound(SOUND_SONAR); 
+                }
+                break;
                 
         }
     }
@@ -208,6 +269,46 @@ void Boulder::doSomething()
     }
 }
 
+void Squirt::doSomething()
+{
+    if (!isAlive()) return;
+    
+    setVisible(true);
+    
+    int x = getX();
+    int y = getY();
+
+    switch (getDirection()) {
+        case up:    setDirection(up); y++; break;
+        case down:  setDirection(down); y--; break;
+        case left:  setDirection(left); x--; break;
+        case right: setDirection(right); x++; break;
+        default: break;
+    }
+
+    // Check bounds and blockages
+    if (x < 0 || x >= 64 || y < 0 || y >= 60 || !getWorld()->canActorMoveTo(this, x, y)) {
+        setDead();
+        return;
+    }
+
+    moveTo(x, y);
+    m_ticksToLive++;
+
+    if (m_ticksToLive >= 4) {  // dies after 4 moves, not 5 ticks
+        setDead();
+    }
+   
+   /* m_ticksToLive++;
+    if (m_ticksToLive >= 5) {
+        setDead();
+        setVisible(false);
+        return;
+    }*/
+    
+}
+
+
 void GoldNugget::doSomething()
 {
     if (!isAlive()) return;
@@ -290,12 +391,14 @@ void WaterPool::doSomething()
     setVisible(true);
     
     m_ticksToLive++;
-        int T = std::max(100, 300 - 10 * getWorld()->getCurrentGameLevel());
-        if (m_ticksToLive >= T) {
-            setDead();
-            return;
-        }
-
+  
+    int T = std::max(100, 300 - 10 * getWorld()->getCurrentGameLevel());
+    
+    if (m_ticksToLive >= T) {
+        setDead();
+        return;
+    }
+    
         Actor* picker = getWorld()->findNearbyPickerUpper(this, 3);
         Actor* radius = getWorld()->findNearbyPickerUpper(this, 12);
 
@@ -322,13 +425,6 @@ void RegularProtester::doSomething()
 }
 
 void HardcoreProtester::doSomething()
-{
-    if (!isAlive()) return;
-    
-    setVisible(true);
-}
-
-void Squirt::doSomething()
 {
     if (!isAlive()) return;
     
