@@ -34,7 +34,8 @@ public:
     virtual void cleanUp();
     
     // Add an actor to the world.
-    void addActor(Actor* a);
+    void addActor(Actor* a){if (a != nullptr)
+        m_squirt.push_back(a);}
     
     // Clear a 4x4 region of Ice. &&&
     bool clearIce(int x, int y);
@@ -88,6 +89,8 @@ public:
     
     void decBarrels(){--m_barrelsLeft;}
     
+    const vector<Boulder*>& getBoulders() const { return m_boulder; }
+    
     int getCurrentGameLevel(){return getLevel();}
     int getNumLivesLeft(){return getLives();}
     int getCurrentHealth(){return 100;}//fix
@@ -110,6 +113,7 @@ private:
     vector<OilBarrel*> m_barrel{};
     vector<SonarKit*> m_sonar{};
     vector<WaterPool*> m_pool{};
+    vector<Actor*> m_squirt{};
     int nIce;
     Ice* IcePointers[64][60];
     
@@ -125,5 +129,3 @@ private:
 
 #endif //STUDENTWORLD_H
 //end of StudentWorld.h
-
-
