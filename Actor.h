@@ -68,13 +68,13 @@ class StudentWorld;
      virtual void move(){;}
      
        // Pick up a gold nugget.
-     virtual void addGold() = 0;
+     virtual void addGold(){;}
      
        // How many hit points does this actor have left?
      unsigned int getHitPoints() const{return 0;}
 
      virtual bool annoy(unsigned int amount){return false;}
-     virtual bool canPickThingsUp() const{return false;}
+     virtual bool canPickThingsUp() const;
  };
 
 class Ice : public Actor{
@@ -124,16 +124,18 @@ public:
  };
  */
  class ActivatingObject : public Actor
- {
- public:
-     ActivatingObject(StudentWorld* world, int startX, int startY, int imageID,int soundToPlay, bool activateOnPlayer,
-                      bool activateOnProtester, bool initiallyActive): Actor(world, startX, startY, right, true, imageID, 1.0, 2){;}
-     
-     virtual void move(){;}
-
-       // Set number of ticks until this object dies
-     void setTicksToLive(){;}
- };
+{
+public:
+    ActivatingObject(StudentWorld* world, int startX, int startY, int imageID,int soundToPlay, bool activateOnPlayer,
+                     bool activateOnProtester, bool initiallyActive): Actor(world, startX, startY, right, true, imageID, 1.0, 2){;}
+    
+    virtual void move(){;}
+    virtual void addBarrels(){;}
+    virtual unsigned int getBarrels() const {return 0;}
+    
+    // Set number of ticks until this object dies
+    void setTicksToLive(){;}
+};
 
 
 class IceMan : public Agent {
@@ -149,8 +151,8 @@ public:
     
     virtual void move(){}
     virtual bool annoy(unsigned int amount){return false;}
-    virtual void addGold(){}
-    virtual bool canDigThroughIce() const{return false;}
+    virtual bool canDigThroughIce() const{return true;}
+    virtual bool canPickThingsUp() const override { return true; }
 
       // Pick up a sonar kit.
     void addSonar(){}
@@ -158,14 +160,24 @@ public:
       // Pick up water.
     void addWater(){}
 
-      // Get amount of gold
-    unsigned int getGold() const{return 0;}
+    //increment gold
+    void addGold() override { m_gold++; }
+    // Get amount of gold
+    unsigned int getGold() const {return m_gold;}
     
       // Get amount of sonar charges
     unsigned int getSonar() const{return 0;}
 
       // Get amount of water
     unsigned int getWater() const{return 0;}
+    
+    virtual void addBarrels(){m_barrels++;}
+    
+    virtual unsigned int getBarrels() const {return m_barrels;}
+    
+private:
+    unsigned int m_gold;
+    unsigned int m_barrels;
 };
 
 /*
@@ -265,3 +277,4 @@ public:
 
 #endif //ACTOR_H
 //end of Actor.h
+
