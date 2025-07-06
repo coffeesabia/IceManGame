@@ -181,10 +181,9 @@ int StudentWorld::move()
                 int y = rand() % 57;
 
                 bool isCleared = true;
-                for (int i = x; i < x+4 && i < 64; ++i) {
-                    if (x >= 26 && x <= 40 && y > 20) continue;
-                    for (int j = y; j < y+4 && j < 60; ++j) {
-                        if (IcePointers[i][j] != nullptr) {
+                for (int i = x; i < x + 4 && i < 64; ++i) {
+                    for (int j = y; j < y + 4 && j < 60; ++j) {
+                        if (iceAt(i, j)) {
                             isCleared = false;
                             break;
                         }
@@ -203,6 +202,16 @@ int StudentWorld::move()
         }
 
         m_toggleState = 1 - m_toggleState;
+    }
+    
+    for (int i = 0; i < m_squirt.size(); ) {
+        if (m_squirt[i] && m_squirt[i]->isAlive()) {
+            m_squirt[i]->doSomething();
+            ++i;
+        } else {
+            delete m_squirt[i];
+            m_squirt.erase(m_squirt.begin() + i);
+        }
     }
     
     ostringstream oss;
@@ -249,6 +258,10 @@ void StudentWorld::cleanUp(){
         m_iceman = nullptr;
     }
     
+    for (Actor* s : m_squirt)
+            delete s;
+    m_squirt.clear();
+    
     for (Boulder* b : m_boulder)
             delete b;
         m_boulder.clear();
@@ -281,10 +294,6 @@ void StudentWorld::cleanUp(){
         }
     }
     m_Hprotester.clear();
-}
-
-void StudentWorld::addActor(Actor* a){
-    
 }
 
 bool StudentWorld::clearIce(int x, int y)
@@ -330,7 +339,19 @@ int StudentWorld::annoyAllNearbyActors(Actor* annoyer, int points, int radius){
 }
 
 void StudentWorld::revealAllNearbyObjects(int x, int y, int radius){
-    
+    auto tryReveal = [&](auto& container) {
+        for (ActivatingObject* a : container) {
+            if (!a->isAlive()) continue;
+
+            double dx = a->getX() - x;
+            double dy = a->getY() - y;
+            if (sqrt(dx*dx + dy*dy) <= radius)
+                a->setVisible(true);
+        }
+    };
+
+    tryReveal(m_barrel);
+    tryReveal(m_gold);
 }
 
 Actor* StudentWorld::findNearbyIceMan(Actor* a, int radius) const{
