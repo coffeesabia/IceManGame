@@ -21,13 +21,13 @@ class StudentWorld : public GameWorld
 {
 public:
     StudentWorld(std::string assetDir)
-        : GameWorld(assetDir)
-        {;}
-        
+    : GameWorld(assetDir)
+    {;}
+    
     virtual ~StudentWorld()
-        {
-            cleanUp();
-        }
+    {
+        cleanUp();
+    }
     
     virtual int init();
     virtual int move();
@@ -37,7 +37,7 @@ public:
     void addActor(Actor* a);
     
     // Clear a 4x4 region of Ice. &&&
-    void clearIce(int x, int y);
+    bool clearIce(int x, int y);
     
     // Can actor move to x,y?, is there a boulder, or protestor?
     bool canActorMoveTo(Actor* a, int x, int y) const;
@@ -74,7 +74,7 @@ public:
     GraphObject::Direction lineOfSightToIceMan(Actor* a) const;
     
     // Return whether the Actor a is within radius of IceMan.
-    bool isNearIceMan(Actor* a, int radius) const;
+    bool isNearIceMan(Actor* a, int radius) const{return false;}
     
     // Determine the direction of the first move a quitting protester
     // makes to leave the oil field.
@@ -86,19 +86,24 @@ public:
     
     bool iceAt(int x, int y) const;
     
-    int getCurrentGameLevel(){return 0;}
-    int getNumLivesLeft(){return 3;}
-    int getCurrentHealth(){return 100;}
-    int getSquirtsLeftInSquirtGun(){return 5;}
+    void decBarrels(){--m_barrelsLeft;}
+    
+    int getCurrentGameLevel(){return getLevel();}
+    int getNumLivesLeft(){return getLives();}
+    int getCurrentHealth(){return 100;}//fix
+    int getSquirtsLeftInSquirtGun(){return m_iceman->getWater();}
     int getPlayerGoldCount(){return m_iceman->getGold();}
-    int getNumberOfBarrelsRemainingToBePickedUp(){return m_iceman->getBarrels();}
-    int getPlayerSonarChargeCount(){return 1;}
-    int getCurrentScore(){return 0;}
+    int getNumberOfBarrelsRemainingToBePickedUp(){return m_barrelsLeft;}
+    int getPlayerSonarChargeCount(){return m_iceman->getSonar();}
+    int getCurrentScore(){return getScore();}
     
 private:
     IceMan* m_iceman;
-    //vector<RegularProtester*> m_Rprotestor;
-    //vector<HardcoreProtester*> m_Hprotestor;
+    int m_barrelsLeft;
+    int level = 0;
+    
+    vector<RegularProtester*> m_Rprotester;
+    vector<HardcoreProtester*> m_Hprotester;
     
     vector<Boulder*> m_boulder{};
     vector<GoldNugget*> m_gold{};
@@ -106,16 +111,19 @@ private:
     vector<SonarKit*> m_sonar{};
     vector<WaterPool*> m_pool{};
     int nIce;
-    Ice* IcePointers[61][60];
+    Ice* IcePointers[64][60];
     
     int m_sonarTimer = 0;
     int m_poolTimer = 0;
     bool m_sonarActive;
     
+    int m_itemTimer;
+    int m_toggleState;
+    
     char ObjPositions[64][64];
-    //vector<Actor*> Objects = {m_iceman, m_boulder, m_gold};
 };
 
 #endif //STUDENTWORLD_H
 //end of StudentWorld.h
+
 
