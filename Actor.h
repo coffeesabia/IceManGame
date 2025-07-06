@@ -116,12 +116,18 @@ public:
  class Squirt : public Actor
  {
  public:
-     Squirt(StudentWorld* world, int startX, int startY, Direction startDir):Actor(world, startX, startY, right, true, IID_WATER_SPURT, 1.0, 2){;}
+     Squirt(StudentWorld* world, int startX, int startY, Direction startDir):Actor(world, startX, startY, startDir, true, IID_WATER_SPURT, 1.0, 2), m_ticksToLive(0)
+     {
+         setVisible(isVisible());
+     }
      
      virtual ~Squirt(){;}
      
-     virtual void move();
+     virtual void move(){;}
      virtual void doSomething();
+     
+ private:
+     int m_ticksToLive = 0;
  };
  
  class ActivatingObject : public Actor
@@ -290,5 +296,3 @@ public:
 
 #endif //ACTOR_H
 //end of Actor.h
-
-
