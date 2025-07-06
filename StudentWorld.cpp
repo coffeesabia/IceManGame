@@ -16,27 +16,15 @@ GameWorld* createStudentWorld(string assetDir)
 
 // Students:  Add code to this file (if you wish), StudentWorld.h, Actor.h and Actor.cpp
 
-/*bool StudentWorld::NearIceman(int x, int y, int amount)
-{
-    int square = pow(m_iceman -> getX() - x, 2) + pow(m_iceman -> getY() - y, 2);
-    if(sqrt(square) <= amount)
-        return true;
-    
-    return false;
-}
-
-void StudentWorld::setPositions(int x, int y, char objtype)
-{
-    for (int i = x; i != x + 4; i++)
-        for (int j = y; j != y + 4; j++)
-            ObjPositions[i][j] = objtype;
-}*/
-
-
-
 int StudentWorld::init()
 {
-     for (int x = 0; x < 64; x++) {
+    for (int x = 0; x < 64; x++) {
+        for (int y = 0; y < 60; y++) {
+            IcePointers[x][y] = nullptr;
+        }
+    }
+    
+    for (int x = 0; x < 64; x++) {
             for (int y = 0; y < 60; y++) {
                 if (x >= 30 && x <= 33 && y > 3) {
                     IcePointers[x][y] = nullptr;  // tunnel area
@@ -97,6 +85,7 @@ int StudentWorld::init()
             m_barrel.push_back(barrel);
             placed++;
         }
+        m_barrelsLeft = numberOfBarrels;
 
         int numberOfNuggets = max((5 - getCurrentGameLevel()) / 2, 2);
         placed = 0;
@@ -113,9 +102,8 @@ int StudentWorld::init()
             placed++;
         }
     
-    int T = max(100, 300 - 10 * getCurrentGameLevel());
-
-    
+    m_itemTimer = 0;
+    m_toggleState = 0; // Start with sonar
     
    return GWSTATUS_CONTINUE_GAME;
     
@@ -123,43 +111,98 @@ int StudentWorld::init()
 
 int StudentWorld::move()
 {
-    if (m_iceman -> isAlive())
+    if (m_iceman && m_iceman -> isAlive())
         m_iceman -> doSomething();
     
     
     //iterate through all boulders
     for (int i = 0; i < m_boulder.size(); ++i)
     {
-        if (m_boulder[i] -> isAlive())
+        if (m_boulder[i] && m_boulder[i] -> isAlive())
             m_boulder[i] -> doSomething();
     }
     
-    /*for (int i = 0; i < m_gold.size(); ++i)
-    {
-        if (m_gold[i] -> isAlive())
-            m_gold[i] -> doSomething();
-        if (!m_gold[i] -> isAlive())
-            delete m_gold[i];
-    }*/
-    
-    for (int i = 0; i < m_gold.size(); ) {
-        if (m_gold[i]->isAlive()) {
+   for (int i = 0; i < m_gold.size(); ) {
+        if (m_gold[i] && m_gold[i]->isAlive()) {
             m_gold[i]->doSomething();
             ++i;
         } else {
             delete m_gold[i];
-            m_gold.erase(m_gold.begin() + i); // don't increment i here
+            m_gold.erase(m_gold.begin() + i);
         }
     }
     
     for (int i = 0; i < m_barrel.size(); ) {
-        if (m_barrel[i]->isAlive()) {
+        if (m_barrel[i] && m_barrel[i]->isAlive()) {
             m_barrel[i]->doSomething();
             ++i;
         } else {
             delete m_barrel[i];
-            m_barrel.erase(m_barrel.begin() + i); // don't increment i here
+            m_barrel.erase(m_barrel.begin() + i); //
         }
+    }
+    
+    int T = max(100, 300 - 10 * getCurrentGameLevel());
+    
+    for (int i = 0; i < m_sonar.size(); ) {
+            if (m_sonar[i] && m_sonar[i]->isAlive()) {
+                m_sonar[i]->doSomething();
+                ++i;
+            } else {
+                delete m_sonar[i];
+                m_sonar.erase(m_sonar.begin() + i); //
+            }
+        }
+    
+    for (int i = 0; i < m_pool.size(); ) {
+        if (m_pool[i] && m_pool[i]->isAlive()) {
+            m_pool[i]->doSomething();
+            ++i;
+        } else {
+            delete m_pool[i];
+            m_pool.erase(m_pool.begin() + i); //
+        }
+    }
+    
+    m_itemTimer++;
+
+    if (m_itemTimer >= T) {
+        m_itemTimer = 0;
+
+        if (m_toggleState == 0) {
+            
+            SonarKit* sonar = new SonarKit(0, 60, this, true, true);
+            m_sonar.push_back(sonar);
+        } else {
+            
+            int tries = 0;
+            while (tries < 100) {
+                int x = rand() % 61;
+                int y = rand() % 57;
+
+                bool isCleared = true;
+                for (int i = x; i < x+4 && i < 64; ++i) {
+                    if (x >= 26 && x <= 40 && y > 20) continue;
+                    for (int j = y; j < y+4 && j < 60; ++j) {
+                        if (IcePointers[i][j] != nullptr) {
+                            isCleared = false;
+                            break;
+                        }
+                    }
+                    if (!isCleared) break;
+                }
+
+                if (isCleared) {
+                    WaterPool* pool = new WaterPool(x, y, this, true, true);
+                    m_pool.push_back(pool);
+                    break;
+                }
+
+                tries++;
+            }
+        }
+
+        m_toggleState = 1 - m_toggleState;
     }
     
     ostringstream oss;
@@ -184,8 +227,8 @@ int StudentWorld::move()
 
     setGameStatText(oss.str());
     
-    //if (getNumberOfBarrelsRemainingToBePickedUp() == 0)
-        //return GWSTATUS_FINISHED_LEVEL;
+    if (getNumberOfBarrelsRemainingToBePickedUp() == 0)
+        return GWSTATUS_FINISHED_LEVEL;
     
     return GWSTATUS_CONTINUE_GAME;
 }
@@ -206,44 +249,59 @@ void StudentWorld::cleanUp(){
         m_iceman = nullptr;
     }
     
-    /*if (m_Rprotestor != nullptr) {
-        delete m_Rprotestor;
-        m_Rprotestor = nullptr;
-    }
-    
-    if (m_Hprotestor != nullptr) {
-        delete m_Hprotestor;
-        m_Hprotestor = nullptr;
-    }*/
-    
-    for (Boulder* b : m_boulder) {
-        delete b;
-    }
-    m_boulder.clear();
+    for (Boulder* b : m_boulder)
+            delete b;
+        m_boulder.clear();
 
-    
-    for (GoldNugget* g : m_gold) {
+   for (auto g : m_gold)
         delete g;
-    }
     m_gold.clear();
     
-    for (OilBarrel* o : m_barrel) {
-        delete o;
-    }
+    for (auto b : m_barrel) delete b;
     m_barrel.clear();
-    
-    for (SonarKit* kit : m_sonar) delete kit;
-    m_sonar.clear();
-    
 
-    for (WaterPool* pool : m_pool) delete pool;
+    for (auto s : m_sonar) delete s;
+    m_sonar.clear();
+
+    for (auto w : m_pool) delete w;
     m_pool.clear();
     
-    /*for (Actor* obj : Objects) {
-        delete obj;
+    for (size_t i = 0; i < m_Rprotester.size(); ++i) {
+        if (m_Rprotester[i]) {
+            delete m_Rprotester[i];
+            m_Rprotester[i] = nullptr;
+        }
     }
+    m_Rprotester.clear();
     
-    Objects.clear();*/
+    for (size_t i = 0; i < m_Hprotester.size(); ++i) {
+        if (m_Hprotester[i]) {
+            delete m_Hprotester[i];
+            m_Hprotester[i] = nullptr;
+        }
+    }
+    m_Hprotester.clear();
+}
+
+void StudentWorld::addActor(Actor* a){
+    
+}
+
+bool StudentWorld::clearIce(int x, int y)
+{
+    bool removedIce = false;
+
+    for (int i = x; i < x + 4 && i < 64; ++i) {
+        for (int j = y; j < y + 4 && j < 60; ++j) {
+            if (IcePointers[i][j] != nullptr) {
+                delete IcePointers[i][j];
+                IcePointers[i][j] = nullptr;
+                removedIce = true;
+            }
+        }
+    }
+
+    return removedIce;
 }
 
 // Can actor move to x,y?, is there a boulder, or protestor?
@@ -262,47 +320,67 @@ bool StudentWorld::canActorMoveTo(Actor* a, int x, int y) const {
             }
         }
     }
-
     // Add additional checks here for Protesters, if needed
 
     return true; // No Boulder or blocking object at the destination
 }
 
-//deleting ice when iceman runs into it
-void StudentWorld::clearIce(int x, int y)
-{
-    for (int i = 0; i < 64; ++i) {
-        for (int j = 0; j < 60; ++j) {
-            if (IcePointers[i][j] != nullptr) {
-                int ix = IcePointers[i][j]->getX();
-                int iy = IcePointers[i][j]->getY();
-                
-                if (ix >= x && ix <= x + 3 && iy >= y && iy <= y + 3) {
-                    delete IcePointers[i][j];
-                    IcePointers[i][j] = nullptr;
-                }
-            }
-        }
-    }
+int StudentWorld::annoyAllNearbyActors(Actor* annoyer, int points, int radius){
+    return 0;
 }
 
-/*bool StudentWorld::isNearIceMan(Actor* a, int radius) const {
+void StudentWorld::revealAllNearbyObjects(int x, int y, int radius){
+    
+}
+
+Actor* StudentWorld::findNearbyIceMan(Actor* a, int radius) const{
+    return a;
+}
+
+Actor* StudentWorld::findNearbyPickerUpper(Actor* a, int radius) const{
+    // First, check if IceMan is in range
+    if (!a) return nullptr;
+    
     int ax = a->getX();
     int ay = a->getY();
+    
+    if (m_iceman != nullptr && m_iceman->isAlive()) {
+        int ix = m_iceman->getX();
+        int iy = m_iceman->getY();
 
-    for (int x = max(0, ax - radius); x <= min(63, ax + radius); ++x) {
-        for (int y = max(0, ay - radius); y <= min(59, ay + radius); ++y) {
-            if (IcePointers[x][y] != nullptr) {
-                int dx = x - ax;
-                int dy = y - ay;
-                if (dx*dx + dy*dy <= radius * radius) {
-                    return true; // Found ice within radius
-                    }
-                }
-            }
+        double dist = sqrt(pow(ix - ax, 2) + pow(iy - ay, 2));
+        if (dist <= radius && m_iceman->canPickThingsUp()) {
+            return m_iceman;
         }
-        return false;
-    }*/
+    }
+
+    // Later, you can add logic for Protesters here if needed
+    return nullptr;
+}
+
+void StudentWorld::annoyIceMan(){
+    
+}
+
+void StudentWorld::giveIceManSonar(){
+    
+}
+
+void StudentWorld::giveIceManWater(){
+    
+}
+
+bool StudentWorld::facingTowardIceMan(Actor* a) const{
+    return false;
+}
+
+GraphObject::Direction StudentWorld::determineFirstMoveToExit(int x, int y){
+    return ActivatingObject::none;
+}
+
+GraphObject::Direction StudentWorld::determineFirstMoveToIceMan(int x, int y){
+    return ActivatingObject::none;
+}
 
 bool StudentWorld::iceAt(int x, int y) const {
    if (x < 0 || x >= 64 || y < 0 || y >= 60)
@@ -312,37 +390,6 @@ bool StudentWorld::iceAt(int x, int y) const {
         return true;
     else
         return false;
-    
-    
-   /* for (int i = x; i < x + 4; i++) {
-        for (int j = y; j < y + 4; j++) {
-            if (i < 0 || i >= 64 || j < 0 || j >= 60)
-                continue; // skip out-of-bounds but don’t return false
-            if (IcePointers[i][j] != nullptr)
-                return true; // found ice in the 4x4 region
-        }
-    }
-    return false; // no ice in the 4x4 region*/
 }
-
-Actor* StudentWorld::findNearbyPickerUpper(Actor* a, int radius) const{
-    // First, check if IceMan is in range
-       int ax = a->getX();
-       int ay = a->getY();
-
-       if (m_iceman != nullptr && m_iceman->isAlive()) {
-           int ix = m_iceman->getX();
-           int iy = m_iceman->getY();
-
-           double dist = sqrt(pow(ix - ax, 2) + pow(iy - ay, 2));
-           if (dist <= radius && m_iceman->canPickThingsUp()) {
-               return m_iceman;
-           }
-       }
-
-       // Later, you can add logic for Protesters here if needed
-       return nullptr;
-}
-
 
 //end of StudentWorld.cpp
