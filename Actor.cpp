@@ -14,28 +14,28 @@ void IceMan::doSomething(){ //during a tick
         switch(ch)
         {
             case KEY_PRESS_UP:
-                if(getY() + 1 < 60)
+                if(getY() + 1 < 61)
                 {
                     setDirection(up);
                     
                     if(getWorld()->canActorMoveTo(this, getX(), getY()+1))
                     {
                         moveTo(getX(), getY() + 1);
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
             case 'w':
-                if(getY() + 1 < 60)
+                if(getY() + 1 < 61)
                 {
                     setDirection(up);
                     
                    if(getWorld()->canActorMoveTo(this, getX(), getY()+1))
                     {
                         moveTo(getX(), getY() + 1);
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                    }
                 }
                 break;
@@ -47,8 +47,8 @@ void IceMan::doSomething(){ //during a tick
                    if(getWorld()->canActorMoveTo(this, getX(), getY()-1))
                     {
                         moveTo(getX(), getY() - 1);
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -60,8 +60,8 @@ void IceMan::doSomething(){ //during a tick
                     if(getWorld()->canActorMoveTo(this, getX(), getY()-1))
                     {
                         moveTo(getX(), getY() - 1);
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -73,8 +73,8 @@ void IceMan::doSomething(){ //during a tick
                     if(getWorld()->canActorMoveTo(this, getX()-1, getY()))
                     {
                         moveTo(getX()-1, getY());
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -86,8 +86,8 @@ void IceMan::doSomething(){ //during a tick
                     if(getWorld()->canActorMoveTo(this, getX()-1, getY()))
                     {
                         moveTo(getX()-1, getY());
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -99,8 +99,8 @@ void IceMan::doSomething(){ //during a tick
                    if(getWorld()->canActorMoveTo(this, getX()+1, getY()))
                     {
                         moveTo(getX() + 1, getY());
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -112,8 +112,8 @@ void IceMan::doSomething(){ //during a tick
                     if(getWorld()->canActorMoveTo(this, getX()+1, getY()))
                     {
                         moveTo(getX() + 1, getY());
-                        getWorld()->clearIce(getX(), getY());
-                        getWorld()->playSound(SOUND_DIG);
+                        if (getWorld()->clearIce(getX(), getY()))
+                            getWorld()->playSound(SOUND_DIG);
                     }
                 }
                 break;
@@ -170,7 +170,8 @@ void Boulder::doSomething()
         {
             // Check if we can fall further
             if (y - 1 < 0) {
-                setDead(); // hit bottom
+                setDead();
+                setVisible(false);
                 return;
             }
 
@@ -191,6 +192,7 @@ void Boulder::doSomething()
             }
 
             if (iceBelow) {
+                m_state = STABLE; 
                 return;
             }
 
@@ -210,56 +212,75 @@ void GoldNugget::doSomething()
 {
     if (!isAlive()) return;
     
-    setVisible(true);
-    
     Actor* a = getWorld()->findNearbyPickerUpper(this, 3);
-        if (a != nullptr && a->canPickThingsUp()) {
-            Agent* ag = dynamic_cast<Agent*>(a);
-            if (ag != nullptr) {
-                ag->addGold();
-                setVisible(false);
-                setDead();
-                getWorld()->playSound(SOUND_GOT_GOODIE);
-                getWorld()->increaseScore(10);
-            }
+    Actor* radius = getWorld()->findNearbyPickerUpper(this, 12);
+    
+    if (radius != nullptr && radius->canPickThingsUp())
+        setVisible(true);
+        
+    if (a != nullptr && a->canPickThingsUp()) {
+        Agent* ag = dynamic_cast<Agent*>(a);
+        if (ag != nullptr) {
+            ag->addGold();
+            setVisible(false);
+            setDead();
+            getWorld()->playSound(SOUND_GOT_GOODIE);
+            getWorld()->increaseScore(10);
         }
+        }
+    
 }
 
 void OilBarrel::doSomething()
 {
-    if (!isAlive()) return;
+   if (!isAlive())
+            return;
+
+    Actor* picker = getWorld()->findNearbyPickerUpper(this, 3);
+    Actor* radius = getWorld()->findNearbyPickerUpper(this, 12);
     
-    setVisible(true);
+    if (radius != nullptr && radius->canPickThingsUp())
+        setVisible(true);
     
-    Actor* a = getWorld()->findNearbyPickerUpper(this, 3);
-        if (a != nullptr && a->canPickThingsUp()) {
-            ActivatingObject* ag = dynamic_cast<ActivatingObject*>(a);
-            if (ag != nullptr) {
-                ag->addBarrels();
-                setVisible(false);
-                setDead();                
-                getWorld()->playSound(SOUND_FOUND_OIL);
-                getWorld()->increaseScore(1000);
-            }
+    if (picker != nullptr && picker->canPickThingsUp())
+    {
+        IceMan* iceman = dynamic_cast<IceMan*>(picker);
+        if (iceman != nullptr)
+        {
+            iceman->addBarrels();        // put the barrel in IceMan’s inventory
+            getWorld()->playSound(SOUND_FOUND_OIL);
+            getWorld()->increaseScore(1000);
+            getWorld()->decBarrels();
+            setVisible(false);
+            setDead();
         }
-}
-
-SonarKit::SonarKit(int startX, int startY, StudentWorld* sw, bool isVisible, bool canPick): ActivatingObject(sw, startX, startY, IID_SONAR, SOUND_SONAR, false, true, true)
-{
-    setVisible(isVisible);
-    m_ticksToLive = max(100, 300 - 10 * sw->getCurrentGameLevel());
-}
-
-WaterPool::WaterPool(int startX, int startY, StudentWorld* sw, bool isVisible, bool canPick): ActivatingObject(sw, startX, startY, IID_WATER_POOL, SOUND_GOT_GOODIE, false, true, true)
-{
-    setVisible(isVisible);
-    m_ticksToLive = max(100, 300 - 10 * sw->getCurrentGameLevel());
+    }
 }
 
 void SonarKit::doSomething() {
     if (!isAlive()) return;
     
     setVisible(true);
+    
+    
+    m_ticksToLive++;
+        int T = std::max(100, 300 - 10 * getWorld()->getCurrentGameLevel());
+        if (m_ticksToLive >= T) {
+            setDead();
+            return;
+        }
+
+        Actor* picker = getWorld()->findNearbyPickerUpper(this, 3);
+        if (picker != nullptr && picker->canPickThingsUp()) {
+            IceMan* iceman = dynamic_cast<IceMan*>(picker);
+            if (iceman != nullptr) {
+                iceman->addSonar();
+                getWorld()->playSound(SOUND_GOT_GOODIE);
+                getWorld()->increaseScore(75);
+                setVisible(false);
+                setDead();
+            }
+        }
 }
 
 void WaterPool::doSomething()
@@ -267,14 +288,51 @@ void WaterPool::doSomething()
     if (!isAlive()) return;
     
     setVisible(true);
+    
+    m_ticksToLive++;
+        int T = std::max(100, 300 - 10 * getWorld()->getCurrentGameLevel());
+        if (m_ticksToLive >= T) {
+            setDead();
+            return;
+        }
+
+        Actor* picker = getWorld()->findNearbyPickerUpper(this, 3);
+        Actor* radius = getWorld()->findNearbyPickerUpper(this, 12);
+
+        if (radius != nullptr && radius->canPickThingsUp())
+            setVisible(true);
+
+        if (picker != nullptr && picker->canPickThingsUp()) {
+            IceMan* iceman = dynamic_cast<IceMan*>(picker);
+            if (iceman != nullptr) {
+                iceman->addWater();
+                getWorld()->playSound(SOUND_GOT_GOODIE);
+                getWorld()->increaseScore(100);
+                setVisible(false);
+                setDead();
+            }
+        }
 }
 
-bool Agent::canPickThingsUp() const{
+void RegularProtester::doSomething()
+{
+    if (!isAlive()) return;
     
+    setVisible(true);
+}
+
+void HardcoreProtester::doSomething()
+{
+    if (!isAlive()) return;
     
-    return false;
+    setVisible(true);
+}
+
+void Squirt::doSomething()
+{
+    if (!isAlive()) return;
+    
+    setVisible(true);
 }
 
 //end of Actor.cpp
-
-
