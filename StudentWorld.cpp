@@ -134,6 +134,33 @@ int StudentWorld::move()
             m_boulder[i] -> doSomething();
     }
     
+    /*for (int i = 0; i < m_gold.size(); ++i)
+    {
+        if (m_gold[i] -> isAlive())
+            m_gold[i] -> doSomething();
+        if (!m_gold[i] -> isAlive())
+            delete m_gold[i];
+    }*/
+    
+    for (int i = 0; i < m_gold.size(); ) {
+        if (m_gold[i]->isAlive()) {
+            m_gold[i]->doSomething();
+            ++i;
+        } else {
+            delete m_gold[i];
+            m_gold.erase(m_gold.begin() + i); // don't increment i here
+        }
+    }
+    
+    for (int i = 0; i < m_barrel.size(); ) {
+        if (m_barrel[i]->isAlive()) {
+            m_barrel[i]->doSomething();
+            ++i;
+        } else {
+            delete m_barrel[i];
+            m_barrel.erase(m_barrel.begin() + i); // don't increment i here
+        }
+    }
     
     ostringstream oss;
 
@@ -156,6 +183,9 @@ int StudentWorld::move()
     oss << "Score: " << setw(6) << setfill('0') << score;
 
     setGameStatText(oss.str());
+    
+    //if (getNumberOfBarrelsRemainingToBePickedUp() == 0)
+        //return GWSTATUS_FINISHED_LEVEL;
     
     return GWSTATUS_CONTINUE_GAME;
 }
@@ -220,6 +250,8 @@ void StudentWorld::cleanUp(){
 bool StudentWorld::canActorMoveTo(Actor* a, int x, int y) const {
     // Check if moving actor would overlap with any alive Boulder
     for (Boulder* b : m_boulder) {
+        if (b == a)
+            continue;
         if (b && b->isAlive()) {
             int bx = b->getX();
             int by = b->getY();
@@ -292,5 +324,25 @@ bool StudentWorld::iceAt(int x, int y) const {
     }
     return false; // no ice in the 4x4 region*/
 }
+
+Actor* StudentWorld::findNearbyPickerUpper(Actor* a, int radius) const{
+    // First, check if IceMan is in range
+       int ax = a->getX();
+       int ay = a->getY();
+
+       if (m_iceman != nullptr && m_iceman->isAlive()) {
+           int ix = m_iceman->getX();
+           int iy = m_iceman->getY();
+
+           double dist = sqrt(pow(ix - ax, 2) + pow(iy - ay, 2));
+           if (dist <= radius && m_iceman->canPickThingsUp()) {
+               return m_iceman;
+           }
+       }
+
+       // Later, you can add logic for Protesters here if needed
+       return nullptr;
+}
+
 
 //end of StudentWorld.cpp
