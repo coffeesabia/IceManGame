@@ -7,6 +7,10 @@
 #include "Actor.h"
 #include "GameController.h"
 #include <string>
+#include <vector>
+#include <cmath>
+#include <iomanip>
+#include <sstream>
 using namespace std;
 
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
@@ -86,8 +90,8 @@ public:
     int getNumLivesLeft(){return 3;}
     int getCurrentHealth(){return 100;}
     int getSquirtsLeftInSquirtGun(){return 5;}
-    int getPlayerGoldCount(){return 0;}
-    int getNumberOfBarrelsRemainingToBePickedUp(){return 0;}
+    int getPlayerGoldCount(){return m_iceman->getGold();}
+    int getNumberOfBarrelsRemainingToBePickedUp(){return m_iceman->getBarrels();}
     int getPlayerSonarChargeCount(){return 1;}
     int getCurrentScore(){return 0;}
     
@@ -114,3 +118,4 @@ private:
 
 #endif //STUDENTWORLD_H
 //end of StudentWorld.h
+
