@@ -14,6 +14,7 @@ void IceMan::doSomething(){ //during a tick
         switch(ch)
         {
             case KEY_PRESS_UP:
+            case 'w':
                 if(getY() + 1 < 61)
                 {
                     setDirection(up);
@@ -26,20 +27,8 @@ void IceMan::doSomething(){ //during a tick
                     }
                 }
                 break;
-            case 'w':
-                if(getY() + 1 < 61)
-                {
-                    setDirection(up);
-                    
-                   if(getWorld()->canActorMoveTo(this, getX(), getY()+1))
-                    {
-                        moveTo(getX(), getY() + 1);
-                        if (getWorld()->clearIce(getX(), getY()))
-                            getWorld()->playSound(SOUND_DIG);
-                   }
-                }
-                break;
-            case KEY_PRESS_DOWN:
+           case KEY_PRESS_DOWN:
+        case 's':
                 if(getY() - 1 >= 0)
                 {
                     setDirection(down);
@@ -52,32 +41,7 @@ void IceMan::doSomething(){ //during a tick
                     }
                 }
                 break;
-            case 's':
-                if(getY() - 1 >= 0)
-                {
-                    setDirection(down);
-                    
-                    if(getWorld()->canActorMoveTo(this, getX(), getY()-1))
-                    {
-                        moveTo(getX(), getY() - 1);
-                        if (getWorld()->clearIce(getX(), getY()))
-                            getWorld()->playSound(SOUND_DIG);
-                    }
-                }
-                break;
             case KEY_PRESS_LEFT:
-                if(getX() - 1 >= 0)
-                {
-                    setDirection(left);
-                    
-                    if(getWorld()->canActorMoveTo(this, getX()-1, getY()))
-                    {
-                        moveTo(getX()-1, getY());
-                        if (getWorld()->clearIce(getX(), getY()))
-                            getWorld()->playSound(SOUND_DIG);
-                    }
-                }
-                break;
             case 'a':
                 if(getX() - 1 >= 0)
                 {
@@ -92,6 +56,7 @@ void IceMan::doSomething(){ //during a tick
                 }
                 break;
             case KEY_PRESS_RIGHT:
+            case 'd':
                 if(getX() + 1 < 64)
                 {
                     setDirection(right);
@@ -104,20 +69,7 @@ void IceMan::doSomething(){ //during a tick
                     }
                 }
                 break;
-            case 'd':
-                if(getX() + 1 < 64)
-                {
-                    setDirection(right);
-                    
-                    if(getWorld()->canActorMoveTo(this, getX()+1, getY()))
-                    {
-                        moveTo(getX() + 1, getY());
-                        if (getWorld()->clearIce(getX(), getY()))
-                            getWorld()->playSound(SOUND_DIG);
-                    }
-                }
-                break;
-            case KEY_PRESS_SPACE:
+           case KEY_PRESS_SPACE:
                 if (getWater() > 0) {
                     getWorld()->playSound(SOUND_PLAYER_SQUIRT);
                     m_water--; // reduce water by 1
@@ -186,9 +138,9 @@ void IceMan::doSomething(){ //during a tick
 void Boulder::doSomething()
 {
     if (!isAlive()) return;
-
+    
     setVisible(true);
-
+    
     int x = getX();
     int y = getY();
     
@@ -206,16 +158,16 @@ void Boulder::doSomething()
                     break;
                 }
             }
-
+            
             if (!iceBelow)
             {
                 m_state = WAITING;
                 m_waitTicks = 0;
-
+                
             }
             break;
         }
-
+            
         case WAITING:
         {
             m_waitTicks++;
@@ -226,22 +178,37 @@ void Boulder::doSomething()
             }
             break;
         }
-
+            
         case FALLING:
         {
-            // Check if we can fall further
-            if (y - 1 < 0) {
+           if (y - 1 < 0) {
+                
                 setDead();
                 setVisible(false);
                 return;
             }
+            if (y - 1 < 0 || !getWorld()->canActorMoveTo(this, x, y - 1) || getWorld()->iceAt(x, y - 1)) {
+                   m_state = DONE;
+                   return;
+               }
 
-            // Check for boulder collision
-            if (!getWorld()->canActorMoveTo(this, x, y - 1)) {
-                setDead(); // hit another Boulder
-                return;
-            }
+               // Check if IceMan is within 3 units
+               IceMan* iceman = getWorld()->getIceMan();
+               if (iceman && iceman->isAlive()) {
+                   int ix = iceman->getX();
+                   int iy = iceman->getY();
 
+                   // Check 4x4 overlapping area
+                   if (x + 3 >= ix && x <= ix + 3 &&
+                       y - 1 + 3 >= iy && y - 1 <= iy + 3) {
+                       getWorld()->annoyIceMan(100); // Instant kill
+                   }
+               }
+
+               // Move down one unit
+               moveTo(x, y - 1);
+            y--;
+            
             // Check for ice beneath
             bool iceBelow = false;
             for (int i = 0; i < 4; ++i)
@@ -251,21 +218,20 @@ void Boulder::doSomething()
                     break;
                 }
             }
-
             if (iceBelow) {
-                m_state = STABLE; 
+                m_state = STABLE;
                 return;
             }
-
-            // Safe to move down
-            moveTo(x, y - 1);
-            --y;
-
-            // Optional: Annoy IceMan or Protesters within radius 3
-            // You can add this later if needed
-
-            break;
+               break;
         }
+    }
+}
+
+void IceMan::annoy(int amount) {
+    m_health -= amount;
+    if (m_health <= 0) {
+        setDead();
+        getWorld()->playSound(SOUND_PLAYER_GIVE_UP);
     }
 }
 
@@ -297,15 +263,26 @@ void Squirt::doSomething()
 
     if (m_ticksToLive >= 4) {  // dies after 4 moves, not 5 ticks
         setDead();
-    }
-   
-   /* m_ticksToLive++;
-    if (m_ticksToLive >= 5) {
-        setDead();
-        setVisible(false);
         return;
-    }*/
+    }
     
+    for (Actor* a : getWorld()->getActors()) {
+            Protester* p = dynamic_cast<Protester*>(a);
+            if (p && p->isAlive()) {
+                double dx = p->getX() - getX();
+                double dy = p->getY() - getY();
+                double dist = sqrt(dx * dx + dy * dy);
+
+                if (dist <= 3.0) {
+                    if (p->isHardcore())
+                        p->annoy(15);
+                    else
+                        p->annoy(5);
+                    setDead();
+                    return;
+                }
+            }
+        }
 }
 
 
@@ -417,18 +394,121 @@ void WaterPool::doSomething()
         }
 }
 
+void Protester::moveInDirection(GraphObject::Direction dir) {
+    if (!isAlive()) return;
+        setVisible(true);
+
+    IceMan* iceman = getWorld()->getIceMan();
+    if (iceman && isAlive()) {
+        int dx = iceman->getX() - getX();
+        int dy = iceman->getY() - getY();
+        double dist = sqrt(dx * dx + dy * dy);
+
+        if (dist <= 4.0) {
+            getWorld()->playSound(SOUND_PROTESTER_YELL);
+            iceman->annoy(2); // Yell does 2 HP damage (if your spec uses this)
+            return; // end tick here if needed
+        }
+    }
+    
+        m_ticksAlive++;
+
+    int R = std::max(100, 500 - 10 * getWorld()->getCurrentGameLevel());
+    
+    if (m_ticksAlive >= R && !isLeaving()) {
+        getWorld()->determineFirstMoveToExit(60, 0);
+        return;
+    }
+}
+
 void RegularProtester::doSomething()
 {
     if (!isAlive()) return;
     
     setVisible(true);
+    
+    IceMan* iceman = getWorld()->getIceMan();
+    const vector<RegularProtester*>& regPro = getWorld()->getRegProtester();
+    for (auto protester : regPro) {
+        if (iceman && isAlive()) {
+            // Use 'protester' pointer, not 'regPro'
+            getWorld()->determineFirstMoveToIceMan(protester->getX(), protester->getY());
+            
+            int dx = iceman->getX() - getX();
+            int dy = iceman->getY() - getY();
+            double dist = sqrt(dx * dx + dy * dy);
+            
+            if (dist <= 4.0) {
+                
+                getWorld()->playSound(SOUND_PROTESTER_YELL);
+                getWorld()->annoyIceMan(5);; // Yell does 2 HP damage (if your spec uses this)
+                return; // end tick here if needed */
+            }
+        }
+    }
+       // The max allowed ticks before leaving:
+        int R = std::max(100, 500 - 10 * getWorld()->getCurrentGameLevel());
+
+        if (m_ticksAlive >= R) {
+            // Time to leave, call determineFirstMoveToExit to move towards exit
+            GraphObject::Direction dir = getWorld()->determineFirstMoveToExit(getX(), getY());
+
+            if (dir != GraphObject::none) {
+                moveInDirection(dir);  // Assuming you have a moveInDirection() or similar
+            }
+            else {
+                // Already at exit or nowhere to go, maybe setAlive(false) or similar
+                !isAlive();
+            }
+            return;  // Skip normal behavior since it's leaving
+        }
 }
+
 
 void HardcoreProtester::doSomething()
 {
     if (!isAlive()) return;
     
     setVisible(true);
+    
+    
+    IceMan* iceman = getWorld()->getIceMan();
+    const vector<HardcoreProtester*>& hardPro = getWorld()->getHardProtester();
+    
+    for (auto protester : hardPro) {
+        if (iceman && isAlive()) {
+            // Use 'protester' pointer, not 'regPro'
+            getWorld()->determineFirstMoveToIceMan(protester->getX(), protester->getY());
+            
+            int dx = iceman->getX() - getX();
+            int dy = iceman->getY() - getY();
+            double dist = sqrt(dx * dx + dy * dy);
+            
+            if (dist <= 4.0) {
+                getWorld()->playSound(SOUND_PROTESTER_YELL);
+                getWorld()->annoyIceMan(15); // Yell does 2 HP damage (if your spec uses this)
+                return; // end tick here if needed
+            }
+        }
+        
+    }
+}
+void RegularProtester::move(){;}
+void RegularProtester:: addGold(){;}
+
+void RegularProtester::giveUp(){m_leaving = true;}
+
+bool RegularProtester::annoy(unsigned int amount) {
+        bool dead = Protester::annoy(amount);
+        if (!dead) {
+            setDead(); // one hit = gone
+        }
+        return true;
+    }
+
+void RegularProtester::receiveBribe() {
+        setDead();
 }
 
+void RegularProtester::setLeaving() { m_leaving = true; }
 //end of Actor.cpp
