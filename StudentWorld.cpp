@@ -103,7 +103,7 @@ int StudentWorld::init()
 
             if (!isFarEnough(x, y)) continue;
 
-            GoldNugget* gold = new GoldNugget(x, y, this, true, true);
+            GoldNugget* gold = new GoldNugget(x, y, this, true, true, false);
             m_gold.push_back(gold);
             placed++;
         }
@@ -468,7 +468,15 @@ void StudentWorld::annoyIceMan(int amount){
 }
 
 bool StudentWorld::facingTowardIceMan(Actor* a) const{
-    return false;
+    int ax=a->getX(), ay=a->getY(),
+            ix=m_iceman->getX(), iy=m_iceman->getY();
+        if (ax==ix)
+            return ( (ay<iy && a->getDirection()==GraphObject::up   ) ||
+                     (ay>iy && a->getDirection()==GraphObject::down ) );
+        if (ay==iy)
+            return ( (ax<ix && a->getDirection()==GraphObject::right) ||
+                     (ax>ix && a->getDirection()==GraphObject::left ) );
+        return false;
 }
 
 GraphObject::Direction StudentWorld::determineFirstMoveToExit(int x, int y){
