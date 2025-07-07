@@ -1,4 +1,3 @@
-//start of StudentWorld.h
 #ifndef STUDENTWORLD_H_
 #define STUDENTWORLD_H_
 
@@ -62,17 +61,8 @@ public:
     // Annoy the IceMan.
     void annoyIceMan(int amount);
     
-    void annoyProtester(int amount);
-    
     // Is the Actor a facing toward the IceMan?
     bool facingTowardIceMan(Actor* a) const;
-    
-    // If the Actor a has a clear line of sight to the IceMan, return
-    // the direction to the IceMan, otherwise GraphObject::none.
-    GraphObject::Direction lineOfSightToIceMan(Actor* a) const;
-    
-    // Return whether the Actor a is within radius of IceMan.
-    bool isNearIceMan(Actor* a, int radius) const{return false;}
     
     // Determine the direction of the first move a quitting protester
     // makes to leave the oil field.
@@ -81,8 +71,6 @@ public:
     // Determine the direction of the first move a hardcore protester
     // makes to approach the IceMan.
     GraphObject::Direction determineFirstMoveToIceMan(int x, int y);
-    
-    void moveOneStepTowardIceMan(Protester* p){;}
     
     bool iceAt(int x, int y) const;
     
@@ -94,34 +82,34 @@ public:
     const vector<RegularProtester*>& getRegProtester() const { return m_Rprotester; }
     const vector<HardcoreProtester*>& getHardProtester() const { return m_Hprotester; }
     
-    void setLevel(int lvl) { level = lvl; }
+    void setLevel(int lvl){level = lvl;}
     
     vector<Actor*> getActors() const
     {
         std::vector<Actor*> all;
-
-            for (auto* b : m_boulder)
-                all.push_back(b);
-            for (auto* g : m_gold)
-                all.push_back(g);
-            for (auto* o : m_barrel)
-                all.push_back(o);
-            for (auto* s : m_sonar)
-                all.push_back(s);
-            for (auto* p : m_pool)
-                all.push_back(p);
-            for (auto* q : m_squirt)
-                all.push_back(q);
-            for (auto* r : m_Rprotester)
-                all.push_back(r);
-            for (auto* h : m_Hprotester)
-                all.push_back(h);
-
-            // Don't forget IceMan!
-            if (m_iceman)
-                all.push_back(m_iceman);
-
-            return all;
+        
+        for (auto* b : m_boulder)
+            all.push_back(b);
+        for (auto* g : m_gold)
+            all.push_back(g);
+        for (auto* o : m_barrel)
+            all.push_back(o);
+        for (auto* s : m_sonar)
+            all.push_back(s);
+        for (auto* p : m_pool)
+            all.push_back(p);
+        for (auto* q : m_squirt)
+            all.push_back(q);
+        for (auto* r : m_Rprotester)
+            all.push_back(r);
+        for (auto* h : m_Hprotester)
+            all.push_back(h);
+        
+        // Don't forget IceMan!
+        if (m_iceman)
+            all.push_back(m_iceman);
+        
+        return all;
     }
     
     int getCurrentGameLevel(){return level;}
@@ -137,13 +125,13 @@ private:
     IceMan* m_iceman;
     int m_barrelsLeft;
     int m_livesLeft = 3;
-    int level = 0;
+    int level = 0
+    ;
     bool m_resetToLevelZero = false;
     int m_ticksSinceLevelStart = 0;
-    bool m_protesterSpawned = false;
-    int m_RegprotesterTimer = 0;
-    int m_HardprotesterTimer = 0;
     int m_protesterToggle = 0; // 0 = Regular, 1 = Hardcore
+    int  m_lastRegSpawn  = -999;   // tick the last Regular was spawned
+    int  m_lastHardSpawn = -999;   // tick the last Hardcore was spawned
     
     vector<RegularProtester*> m_Rprotester;
     vector<HardcoreProtester*> m_Hprotester;
@@ -157,16 +145,8 @@ private:
     int nIce;
     Ice* IcePointers[64][60];
     
-    int m_sonarTimer = 0;
-    int m_poolTimer = 0;
-    bool m_sonarActive;
-    
     int m_itemTimer;
     int m_toggleState;
-    
-    char ObjPositions[64][64];
 };
 
 #endif //STUDENTWORLD_H
-//end of StudentWorld.h
-
