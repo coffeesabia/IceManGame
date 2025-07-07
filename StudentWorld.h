@@ -7,6 +7,7 @@
 #include "Actor.h"
 #include "GameController.h"
 #include <string>
+#include <queue>
 #include <vector>
 #include <cmath>
 #include <iomanip>
@@ -59,13 +60,9 @@ public:
     Actor* findNearbyPickerUpper(Actor* a, int radius) const;
     
     // Annoy the IceMan.
-    void annoyIceMan();
+    void annoyIceMan(int amount);
     
-    // Give IceMan some sonar charges.
-    void giveIceManSonar();
-    
-    // Give IceMan some water.
-    void giveIceManWater();
+    void annoyProtester(int amount);
     
     // Is the Actor a facing toward the IceMan?
     bool facingTowardIceMan(Actor* a) const;
@@ -85,15 +82,51 @@ public:
     // makes to approach the IceMan.
     GraphObject::Direction determineFirstMoveToIceMan(int x, int y);
     
+    void moveOneStepTowardIceMan(Protester* p){;}
+    
     bool iceAt(int x, int y) const;
     
     void decBarrels(){--m_barrelsLeft;}
     
     const vector<Boulder*>& getBoulders() const { return m_boulder; }
     
-    int getCurrentGameLevel(){return getLevel();}
-    int getNumLivesLeft(){return getLives();}
-    int getCurrentHealth(){return 100;}//fix
+    IceMan* getIceMan() const { return m_iceman; }
+    const vector<RegularProtester*>& getRegProtester() const { return m_Rprotester; }
+    const vector<HardcoreProtester*>& getHardProtester() const { return m_Hprotester; }
+    
+    void setLevel(int lvl) { level = lvl; }
+    
+    vector<Actor*> getActors() const
+    {
+        std::vector<Actor*> all;
+
+            for (auto* b : m_boulder)
+                all.push_back(b);
+            for (auto* g : m_gold)
+                all.push_back(g);
+            for (auto* o : m_barrel)
+                all.push_back(o);
+            for (auto* s : m_sonar)
+                all.push_back(s);
+            for (auto* p : m_pool)
+                all.push_back(p);
+            for (auto* q : m_squirt)
+                all.push_back(q);
+            for (auto* r : m_Rprotester)
+                all.push_back(r);
+            for (auto* h : m_Hprotester)
+                all.push_back(h);
+
+            // Don't forget IceMan!
+            if (m_iceman)
+                all.push_back(m_iceman);
+
+            return all;
+    }
+    
+    int getCurrentGameLevel(){return level;}
+    int getNumLivesLeft(){return m_livesLeft;}
+    int getCurrentHealth(){return m_iceman->getHealth();}
     int getSquirtsLeftInSquirtGun(){return m_iceman->getWater();}
     int getPlayerGoldCount(){return m_iceman->getGold();}
     int getNumberOfBarrelsRemainingToBePickedUp(){return m_barrelsLeft;}
@@ -103,7 +136,14 @@ public:
 private:
     IceMan* m_iceman;
     int m_barrelsLeft;
+    int m_livesLeft = 3;
     int level = 0;
+    bool m_resetToLevelZero = false;
+    int m_ticksSinceLevelStart = 0;
+    bool m_protesterSpawned = false;
+    int m_RegprotesterTimer = 0;
+    int m_HardprotesterTimer = 0;
+    int m_protesterToggle = 0; // 0 = Regular, 1 = Hardcore
     
     vector<RegularProtester*> m_Rprotester;
     vector<HardcoreProtester*> m_Hprotester;
