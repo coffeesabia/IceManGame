@@ -1,11 +1,9 @@
-//start of StudentWorld.cpp
 #include "StudentWorld.h"
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <cmath>
 #include <iomanip>
-
 
 using namespace std;
 
@@ -31,87 +29,93 @@ int StudentWorld::init()
     }
     
     for (int x = 0; x < 64; x++) {
-            for (int y = 0; y < 60; y++) {
-                if (x >= 30 && x <= 33 && y > 3) {
-                    IcePointers[x][y] = nullptr;  // tunnel area
-                } else {
-                    IcePointers[x][y] = new Ice(x, y, this);
-                }
+        for (int y = 0; y < 60; y++) {
+            if (x >= 30 && x <= 33 && y > 3) {
+                IcePointers[x][y] = nullptr;  // tunnel area
+            } else {
+                IcePointers[x][y] = new Ice(x, y, this);
             }
         }
+    }
     
     m_iceman = new IceMan(30, 60, this);
     
     auto isFarEnough = [&](int x, int y) {
-            for (Boulder* b : m_boulder) {
-                int dx = b->getX() - x;
-                int dy = b->getY() - y;
-                if (sqrt(dx * dx + dy * dy) < 6.0) return false;
-            }
-            for (GoldNugget* g : m_gold) {
-                int dx = g->getX() - x;
-                int dy = g->getY() - y;
-                if (sqrt(dx * dx + dy * dy) < 6.0) return false;
-            }
-            for (OilBarrel* o : m_barrel) {
-                int dx = o->getX() - x;
-                int dy = o->getY() - y;
-                if (sqrt(dx * dx + dy * dy) < 6.0) return false;
-            }
-            return true;
-        };
-
-        int numberOfBoulders = min((getCurrentGameLevel() / 2) + 2, 9);
-        int placed = 0;
-        while (placed < numberOfBoulders) {
-            int x = rand() % 61;
-            int y = rand() % 37 + 20;
-
-            if (x >= 27 && x <= 33 && y > 20) continue;
-
-            if (!isFarEnough(x, y)) continue;
-
-            Boulder* b = new Boulder(x, y, this);
-            m_boulder.push_back(b);
-            clearIce(x, y);
-            placed++;
+        for (Boulder* b : m_boulder) {
+            int dx = b->getX() - x;
+            int dy = b->getY() - y;
+            if (sqrt(dx * dx + dy * dy) < 6.0) return false;
         }
-
-        int numberOfBarrels = min((2 + getCurrentGameLevel()), 21);
-        placed = 0;
-        while (placed < numberOfBarrels) {
-            int x = rand() % 61;
-            int y = rand() % 37 + 20;
-
-            if (x >= 27 && x <= 33 && y > 20) continue;
-
-            if (!isFarEnough(x, y)) continue;
-
-            OilBarrel* barrel = new OilBarrel(x, y, this, true, true);
-            m_barrel.push_back(barrel);
-            placed++;
+        for (GoldNugget* g : m_gold) {
+            int dx = g->getX() - x;
+            int dy = g->getY() - y;
+            if (sqrt(dx * dx + dy * dy) < 6.0) return false;
         }
-        m_barrelsLeft = numberOfBarrels;
-
-        int numberOfNuggets = max((5 - getCurrentGameLevel()) / 2, 2);
-        placed = 0;
-        while (placed < numberOfNuggets) {
-            int x = rand() % 61;
-            int y = rand() % 37 + 20;
-
-            if (x >= 27 && x <= 33 && y > 20) continue;
-
-            if (!isFarEnough(x, y)) continue;
-
-            GoldNugget* gold = new GoldNugget(x, y, this, true, true, false);
-            m_gold.push_back(gold);
-            placed++;
+        for (OilBarrel* o : m_barrel) {
+            int dx = o->getX() - x;
+            int dy = o->getY() - y;
+            if (sqrt(dx * dx + dy * dy) < 6.0) return false;
         }
+        return true;
+    };
+    
+    int numberOfBoulders = min((getCurrentGameLevel() / 2) + 2, 9);
+    int placed = 0;
+    while (placed < numberOfBoulders) {
+        int x = rand() % 61;
+        int y = rand() % 37 + 20;
+        
+        if (x >= 27 && x <= 33 && y > 20) continue;
+        
+        if (!isFarEnough(x, y)) continue;
+        
+        Boulder* b = new Boulder(x, y, this);
+        m_boulder.push_back(b);
+        clearIce(x, y);
+        placed++;
+    }
+    
+    int numberOfBarrels = min((2 + getCurrentGameLevel()), 21);
+    placed = 0;
+    while (placed < numberOfBarrels) {
+        int x = rand() % 61;
+        int y = rand() % 37 + 20;
+        
+        if (x >= 27 && x <= 33 && y > 20) continue;
+        
+        if (!isFarEnough(x, y)) continue;
+        
+        OilBarrel* barrel = new OilBarrel(x, y, this, true, true);
+        m_barrel.push_back(barrel);
+        placed++;
+    }
+    m_barrelsLeft = numberOfBarrels;
+    
+    int numberOfNuggets = max((5 - getCurrentGameLevel()) / 2, 2);
+    placed = 0;
+    while (placed < numberOfNuggets) {
+        int x = rand() % 61;
+        int y = rand() % 37 + 20;
+        
+        if (x >= 27 && x <= 33 && y > 20) continue;
+        
+        if (!isFarEnough(x, y)) continue;
+        
+        GoldNugget* gold = new GoldNugget(x, y, this, true, true, false);
+        m_gold.push_back(gold);
+        placed++;
+    }
     
     m_itemTimer = 0;
     m_toggleState = 0; // Start with sonar
     
-   return GWSTATUS_CONTINUE_GAME;
+    m_ticksSinceLevelStart = 0;   // start counting ticks for this level
+    int R = std::max(100, 500 - 10 * getCurrentGameLevel());
+    int P = std::max(100, 300 - 10 * getCurrentGameLevel());
+    m_lastRegSpawn  = -(R - 10);
+    m_lastHardSpawn = -P;
+    
+    return GWSTATUS_CONTINUE_GAME;
     
 }
 
@@ -120,60 +124,38 @@ int StudentWorld::move()
     if (m_iceman && m_iceman -> isAlive())
         m_iceman -> doSomething();
     
-    m_RegprotesterTimer++;
-    m_HardprotesterTimer++;
+    if (!m_iceman->isAlive()) {
+        if (getCurrentGameLevel() == 0)
+            return GWSTATUS_LEVEL_ERROR;          //not sure what this is
+        
+        decLives();                                 // higher levels: lose a life
+        return GWSTATUS_PLAYER_DIED;                // level will restart
+    }
+    
     m_ticksSinceLevelStart++;
-
-    static int tickCount = 0;
-    tickCount++;
-
-    for (int i = 0; i < m_Rprotester.size(); ) {
-        if (m_Rprotester[i] && m_Rprotester[i]->isAlive()) {
-            if (tickCount % 2 == 0) {
-                m_Rprotester[i]->doSomething();
-            }
-            ++i;
-        } else {
-            delete m_Rprotester[i];
-            m_Rprotester.erase(m_Rprotester.begin() + i);
-        }
-    }
-
-    // Hardcore protester moves every tick
-    for (int i = 0; i < m_Hprotester.size(); ) {
-        if (m_Hprotester[i] && m_Hprotester[i]->isAlive()) {
-            m_Hprotester[i]->doSomething();
-            ++i;
-        } else {
-            delete m_Hprotester[i];
-            m_Hprotester.erase(m_Hprotester.begin() + i);
-        }
+    
+    int R = max(100, 500 - 10 * getCurrentGameLevel());
+    int T = max(100, 300 - 10 * getCurrentGameLevel());
+    
+    if (m_ticksSinceLevelStart - m_lastRegSpawn >= R)
+    {
+        m_Rprotester.push_back(new RegularProtester(60, 60, this));
+        m_lastRegSpawn = m_ticksSinceLevelStart;
     }
     
-    int R = std::max(100, 500 - 10 * getCurrentGameLevel());
-
-    // Spawn RegularProtester every 10 ticks
-    if (m_RegprotesterTimer >= 10) {
-        m_RegprotesterTimer = 0;
-        RegularProtester* rp = new RegularProtester(60, 60, this);
-        m_Rprotester.push_back(rp);
-    }
-
-    // Spawn HardcoreProtester every R ticks
-    if (m_HardprotesterTimer >= R) {
-        m_HardprotesterTimer = 0;
-        HardcoreProtester* hp = new HardcoreProtester(60, 60, this);
-        m_Hprotester.push_back(hp);
+    if (m_ticksSinceLevelStart - m_lastHardSpawn >= R)
+    {
+        m_Hprotester.push_back(new HardcoreProtester(60, 60, this));
+        m_lastHardSpawn = m_ticksSinceLevelStart;
     }
     
-    //iterate through all boulders
     for (int i = 0; i < m_boulder.size(); ++i)
     {
         if (m_boulder[i] && m_boulder[i] -> isAlive())
             m_boulder[i] -> doSomething();
     }
     
-   for (int i = 0; i < m_gold.size(); ) {
+    for (int i = 0; i < m_gold.size(); ) {
         if (m_gold[i] && m_gold[i]->isAlive()) {
             m_gold[i]->doSomething();
             ++i;
@@ -193,17 +175,15 @@ int StudentWorld::move()
         }
     }
     
-    int T = max(100, 300 - 10 * getCurrentGameLevel());
-    
     for (int i = 0; i < m_sonar.size(); ) {
-            if (m_sonar[i] && m_sonar[i]->isAlive()) {
-                m_sonar[i]->doSomething();
-                ++i;
-            } else {
-                delete m_sonar[i];
-                m_sonar.erase(m_sonar.begin() + i); //
-            }
+        if (m_sonar[i] && m_sonar[i]->isAlive()) {
+            m_sonar[i]->doSomething();
+            ++i;
+        } else {
+            delete m_sonar[i];
+            m_sonar.erase(m_sonar.begin() + i); //
         }
+    }
     
     for (int i = 0; i < m_pool.size(); ) {
         if (m_pool[i] && m_pool[i]->isAlive()) {
@@ -216,10 +196,10 @@ int StudentWorld::move()
     }
     
     m_itemTimer++;
-
+    
     if (m_itemTimer >= T) {
         m_itemTimer = 0;
-
+        
         if (m_toggleState == 0) {
             
             SonarKit* sonar = new SonarKit(0, 60, this, true, true);
@@ -230,7 +210,7 @@ int StudentWorld::move()
             while (tries < 100) {
                 int x = rand() % 61;
                 int y = rand() % 57;
-
+                
                 bool isCleared = true;
                 for (int i = x; i < x + 4 && i < 64; ++i) {
                     for (int j = y; j < y + 4 && j < 60; ++j) {
@@ -241,17 +221,17 @@ int StudentWorld::move()
                     }
                     if (!isCleared) break;
                 }
-
+                
                 if (isCleared) {
                     WaterPool* pool = new WaterPool(x, y, this, true, true);
                     m_pool.push_back(pool);
                     break;
                 }
-
+                
                 tries++;
             }
         }
-
+        
         m_toggleState = 1 - m_toggleState;
     }
     
@@ -274,7 +254,7 @@ int StudentWorld::move()
             m_Rprotester.erase(m_Rprotester.begin() + i);
         }
     }
-
+    
     for (int i = 0; i < m_Hprotester.size(); ) {
         if (m_Hprotester[i] && m_Hprotester[i]->isAlive()) {
             m_Hprotester[i]->doSomething();
@@ -284,9 +264,9 @@ int StudentWorld::move()
             m_Hprotester.erase(m_Hprotester.begin() + i);
         }
     }
-  
+    
     ostringstream oss;
-
+    
     int level = getCurrentGameLevel();
     int lives = getNumLivesLeft();
     int health = getCurrentHealth();
@@ -304,16 +284,18 @@ int StudentWorld::move()
     oss << "Barrels: " << barrelsLeft << " ";
     oss << "Sonar: " << sonar << " ";
     oss << "Score: " << setw(6) << setfill('0') << score;
-
+    
     setGameStatText(oss.str());
     
-    if (getNumberOfBarrelsRemainingToBePickedUp() == 0)
+    if (getNumberOfBarrelsRemainingToBePickedUp() == 0){
+        setLevel(getCurrentGameLevel() + 1);
         return GWSTATUS_FINISHED_LEVEL;
+    }
     
     if (!m_iceman || !m_iceman->isAlive()) {
         m_livesLeft--;
         if (m_livesLeft <= 0) {
-            setLevel(0);         
+            setLevel(0);
             m_livesLeft = 3;
             return GWSTATUS_PLAYER_DIED;  // Let GameController restart at level 0
         } else {
@@ -341,23 +323,23 @@ void StudentWorld::cleanUp(){
     }
     
     for (Actor* s : m_squirt)
-            delete s;
+        delete s;
     m_squirt.clear();
     
     for (Boulder* b : m_boulder)
-            delete b;
-        m_boulder.clear();
-
-   for (auto g : m_gold)
+        delete b;
+    m_boulder.clear();
+    
+    for (auto g : m_gold)
         delete g;
     m_gold.clear();
     
     for (auto b : m_barrel) delete b;
     m_barrel.clear();
-
+    
     for (auto s : m_sonar) delete s;
     m_sonar.clear();
-
+    
     for (auto w : m_pool) delete w;
     m_pool.clear();
     
@@ -381,7 +363,7 @@ void StudentWorld::cleanUp(){
 bool StudentWorld::clearIce(int x, int y)
 {
     bool removedIce = false;
-
+    
     for (int i = x; i < x + 4 && i < 64; ++i) {
         for (int j = y; j < y + 4 && j < 60; ++j) {
             if (IcePointers[i][j] != nullptr) {
@@ -391,29 +373,28 @@ bool StudentWorld::clearIce(int x, int y)
             }
         }
     }
-
+    
     return removedIce;
 }
 
-// Can actor move to x,y?, is there a boulder, or protestor?
 bool StudentWorld::canActorMoveTo(Actor* a, int x, int y) const {
-    // Check if moving actor would overlap with any alive Boulder
+    // will moving actor would overlap with any alive Boulder
     for (Boulder* b : m_boulder) {
         if (b == a)
             continue;
         if (b && b->isAlive()) {
             int bx = b->getX();
             int by = b->getY();
-            // Check for 4x4 overlap between actor at (x, y) and Boulder at (bx, by)
+            // check for 4x4 overlap between actor and Boulde
             if (x + 3 >= bx && x <= bx + 3 &&
                 y + 3 >= by && y <= by + 3) {
                 return false; // Blocked by Boulder
             }
         }
     }
-    // Add additional checks here for Protesters, if needed
-     
-     return true;
+    // add checks here for Protesters?
+    
+    return true;
 }
 
 int StudentWorld::annoyAllNearbyActors(Actor* annoyer, int points, int radius){
@@ -424,14 +405,14 @@ void StudentWorld::revealAllNearbyObjects(int x, int y, int radius){
     auto tryReveal = [&](auto& container) {
         for (ActivatingObject* a : container) {
             if (!a->isAlive()) continue;
-
+            
             double dx = a->getX() - x;
             double dy = a->getY() - y;
             if (sqrt(dx*dx + dy*dy) <= radius)
                 a->setVisible(true);
         }
     };
-
+    
     tryReveal(m_barrel);
     tryReveal(m_gold);
 }
@@ -441,7 +422,7 @@ Actor* StudentWorld::findNearbyIceMan(Actor* a, int radius) const{
 }
 
 Actor* StudentWorld::findNearbyPickerUpper(Actor* a, int radius) const{
-    // First, check if IceMan is in range
+    //check if IceMan is in range
     if (!a) return nullptr;
     
     int ax = a->getX();
@@ -450,14 +431,23 @@ Actor* StudentWorld::findNearbyPickerUpper(Actor* a, int radius) const{
     if (m_iceman != nullptr && m_iceman->isAlive()) {
         int ix = m_iceman->getX();
         int iy = m_iceman->getY();
-
+        
         double dist = sqrt(pow(ix - ax, 2) + pow(iy - ay, 2));
         if (dist <= radius && m_iceman->canPickThingsUp()) {
             return m_iceman;
         }
+        for (Protester* p : m_Rprotester) {
+            if (p && p->isAlive() && p->canPickThingsUp() &&
+                inRadius(p->getX(), p->getY(), ax, ay, radius))
+                return p;
+        }
+        
+        for (Protester* p : m_Hprotester) {
+            if (p && p->isAlive() && p->canPickThingsUp() &&
+                inRadius(p->getX(), p->getY(), ax, ay, radius))
+                return p;
+        }
     }
-
-    // Later, you can add logic for Protesters here if needed
     return nullptr;
 }
 
@@ -485,15 +475,14 @@ GraphObject::Direction StudentWorld::determineFirstMoveToExit(int x, int y){
         const int exitY = 60;
 
         if (x == exitX && y== exitY)
-            return ActivatingObject::none;  // Already at exit
+            return ActivatingObject::none;
 
-        // Directions: up, down, left, right
         const int dx[4] = {0, 0, -1, 1};
         const int dy[4] = {1, -1, 0, 0};
         const GraphObject::Direction dir[4] = {GraphObject::up, GraphObject::down, GraphObject::left, GraphObject::right};
 
-        // Distance grid: -1 means unvisited
-        vector<vector<int>> dist(64, vector<int>(60, -1));
+        
+        vector<vector<int>> dist(64, vector<int>(61, -1));
         dist[exitX][exitY] = 0;
 
         queue<pair<int,int>> q;
@@ -507,8 +496,8 @@ GraphObject::Direction StudentWorld::determineFirstMoveToExit(int x, int y){
             for (int i = 0; i < 4; i++) {
                 int nx = x + dx[i];
                 int ny = y + dy[i];
-                if (nx >= 0 && nx < 64 && ny >= 0 && ny < 60) {
-                    // Check if square is not blocked (no ice or boulder)
+                if (nx >= 0 && nx < 64 && ny >= 0 && ny < 61) {
+                    // check if square has no ice or boulder
                     if (dist[nx][ny] == -1 && !iceAt(nx, ny) && canActorMoveTo(nullptr, nx, ny)) {
                         dist[nx][ny] = dist[x][y] + 1;
                         q.push({nx, ny});
@@ -517,85 +506,83 @@ GraphObject::Direction StudentWorld::determineFirstMoveToExit(int x, int y){
             }
         }
 
-        // Now from Protester's position, find neighbor with smallest dist
+        //find neighbor with smallest dist
         int minDist = dist[x][y];
-        if (minDist == -1) return ActivatingObject::none; // No path
+        if (minDist == -1) return ActivatingObject::none; // if no path
 
-        // Check neighbors to find next step closer to exit
+        //check neighbors to find next step closer to exit
         for (int i = 0; i < 4; i++) {
             int nx = x + dx[i];
             int ny = y + dy[i];
-            if (nx >= 0 && nx < 64 && ny >= 0 && ny < 60) {
+            if (nx >= 0 && nx < 64 && ny >= 0 && ny < 61) {
                 if (dist[nx][ny] != -1 && dist[nx][ny] < minDist) {
-                    return dir[i];  // Move toward neighbor closer to exit
+                    return dir[i];  //move toward neighbor closer to exit
                 }
             }
         }
 
-        return ActivatingObject::none;  // no valid move found
+        return ActivatingObject::none;  //no valid move found
 }
 
 GraphObject::Direction StudentWorld::determineFirstMoveToIceMan(int x, int y){
     
     if (!m_iceman || !m_iceman->isAlive())
-            return ActivatingObject::none;
-
-        int ix = m_iceman->getX();
-        int iy = m_iceman->getY();
-
-        if (x == ix && y == iy)
-            return ActivatingObject::none;
-
-        const int dx[4] = {0, 0, -1, 1};
-        const int dy[4] = {1, -1, 0, 0};
-        const GraphObject::Direction dir[4] = {GraphObject::up, GraphObject::down, GraphObject::left, GraphObject::right};
-
-        vector<vector<int>> dist(64, vector<int>(60, -1));
-        dist[ix][iy] = 0;
-
-        queue<pair<int,int>> q;
-        q.push({ix, iy});
-
-        while (!q.empty()) {
-            auto [x, y] = q.front();
-            q.pop();
-
-            for (int i = 0; i < 4; i++) {
-                int nx = x + dx[i];
-                int ny = y + dy[i];
-                if (nx >= 0 && nx < 64 && ny >= 0 && ny < 60) {
-                    if (dist[nx][ny] == -1 && !iceAt(nx, ny) && canActorMoveTo(nullptr, nx, ny)) {
-                        dist[nx][ny] = dist[x][y] + 1;
-                        q.push({nx, ny});
-                    }
-                }
-            }
-        }
-
-        int minDist = dist[x][y];
-        if (minDist == -1) return ActivatingObject::none;
-
+        return ActivatingObject::none;
+    
+    int ix = m_iceman->getX();
+    int iy = m_iceman->getY();
+    
+    if (x == ix && y == iy)
+        return ActivatingObject::none;
+    
+    const int dx[4] = {0, 0, -1, 1};
+    const int dy[4] = {1, -1, 0, 0};
+    const GraphObject::Direction dir[4] = {GraphObject::up, GraphObject::down, GraphObject::left, GraphObject::right};
+    
+    vector<vector<int>> dist(64, vector<int>(61, -1));
+    dist[ix][iy] = 0;
+    
+    queue<pair<int,int>> q;
+    q.push({ix, iy});
+    
+    while (!q.empty()) {
+        auto [x, y] = q.front();
+        q.pop();
+        
         for (int i = 0; i < 4; i++) {
             int nx = x + dx[i];
             int ny = y + dy[i];
-            if (nx >= 0 && nx < 64 && ny >= 0 && ny < 60) {
-                if (dist[nx][ny] != -1 && dist[nx][ny] < minDist) {
-                    return dir[i];
+            if (nx >= 0 && nx < 64 && ny >= 0 && ny < 61) {
+                if (dist[nx][ny] == -1 && !iceAt(nx, ny) && canActorMoveTo(nullptr, nx, ny)) {
+                    dist[nx][ny] = dist[x][y] + 1;
+                    q.push({nx, ny});
                 }
             }
         }
-
-        return ActivatingObject::none;
+    }
+    
+    int minDist = dist[x][y];
+    if (minDist == -1) return ActivatingObject::none;
+    
+    for (int i = 0; i < 4; i++) {
+        int nx = x + dx[i];
+        int ny = y + dy[i];
+        if (nx >= 0 && nx < 64 && ny >= 0 && ny < 61) {
+            if (dist[nx][ny] != -1 && dist[nx][ny] < minDist) {
+                return dir[i];
+            }
+        }
+    }
+    
+    return ActivatingObject::none;
 }
 
 bool StudentWorld::iceAt(int x, int y) const {
-   if (x < 0 || x >= 64 || y < 0 || y >= 60)
-            return false;
-        
+    if (x < 0 || x >= 64 || y < 0 || y >= 60)
+        return false;
+    
     if(IcePointers[x][y] != nullptr)
         return true;
     else
         return false;
 }
-
-//end of StudentWorld.cpp
