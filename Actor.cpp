@@ -131,6 +131,61 @@ void IceMan::doSomething(){ //during a tick
                 }
                 break;
                 
+            case KEY_PRESS_TAB:
+                 if (getGold() > 0) {
+                     getWorld()->playSound(SOUND_PROTESTER_FOUND_GOLD);
+                     m_gold--; // reduce water by 1
+                     
+                     int newX = getX();
+                     int newY = getY();
+                     
+                     switch (getDirection()) {
+                         case up:    newY += 4;
+                             setDirection(up);
+                             break;
+                         case down:
+                             setDirection(down);
+                             newY -= 4; break;
+                         case left:  newX -= 4;
+                             setDirection(left);
+                             break;
+                         case right:
+                             setDirection(right);
+                             newX += 4; break;
+                         default: break;
+                     }
+                     
+                     if (newX >= 0 && newX < 64 && newY >= 0 && newY < 60) {
+                         bool blocked = false;
+                         
+                         for (int i = 0; i < 4 && !blocked; ++i) {
+                             for (int j = 0; j < 4 && !blocked; ++j) {
+                                 if (getWorld()->iceAt(newX + i, newY + j)) {
+                                     blocked = true;
+                                 }
+                             }
+                         }
+                         
+                         for (auto b : getWorld()->getBoulders()) {
+                             if (b && b->isAlive()) {
+                                 int dx = b->getX() - newX;
+                                 int dy = b->getY() - newY;
+                                 if (sqrt(dx*dx + dy*dy) <= 3.0) {
+                                     blocked = true;
+                                     break;
+                                 }
+                             }
+                         }
+                         
+                         // if not blocked, spawn a new Squirt
+                         if (!blocked) {
+                             GoldNugget* g = new GoldNugget(newX, newY, getWorld(), true, true, true);
+                             getWorld()->addActor(g);
+                         }
+                     }
+                 }
+                 break;
+                
         }
     }
 }
@@ -204,6 +259,16 @@ void Boulder::doSomething()
                        getWorld()->annoyIceMan(100); // Instant kill
                    }
                }
+            
+            for (Protester* p : getWorld()->getRegProtester())
+                    if (p && p->isAlive() &&
+                        inRadius(p->getX(), p->getY(), getX(), getY(), 3.0))
+                        p->annoy(100);      // one-shot
+
+                for (Protester* p : getWorld()->getHardProtester())
+                    if (p && p->isAlive() &&
+                        inRadius(p->getX(), p->getY(), getX(), getY(), 3.0))
+                        p->annoy(100);
 
                // Move down one unit
                moveTo(x, y - 1);
@@ -266,23 +331,22 @@ void Squirt::doSomething()
         return;
     }
     
-    for (Actor* a : getWorld()->getActors()) {
-            Protester* p = dynamic_cast<Protester*>(a);
-            if (p && p->isAlive()) {
-                double dx = p->getX() - getX();
-                double dy = p->getY() - getY();
-                double dist = sqrt(dx * dx + dy * dy);
+    for (Actor* actor : getWorld()->getActors())      
+    {
+        // ignore dead things
+        if (!actor->isAlive()) continue;
 
-                if (dist <= 3.0) {
-                    if (p->isHardcore())
-                        p->annoy(15);
-                    else
-                        p->annoy(5);
-                    setDead();
-                    return;
-                }
-            }
+        // Is it a Protester that’s close enough to the squirt?
+        Protester* p = dynamic_cast<Protester*>(actor);   // ❷ <-- replace ‘actor’ not ‘a’
+        if (p && inRadius(p->getX(), p->getY(), getX(), getY(), 4.0))
+        {
+            // Regular loses 5 HP, Hardcore 15 HP
+            p->annoy(p->isHardcore() ? 15 : 5);
+
+            setDead();           // the squirt disappears after hitting
+            return;              // one squirt only hurts once
         }
+    }
 }
 
 
@@ -292,6 +356,17 @@ void GoldNugget::doSomething()
     
     Actor* a = getWorld()->findNearbyPickerUpper(this, 3);
     Actor* radius = getWorld()->findNearbyPickerUpper(this, 12);
+    
+    if (IceMan* im = dynamic_cast<IceMan*>(a))
+    {
+        if (wasDropped())                 // ← NEW guard
+            return;                       // ignore IceMan’s own bribe
+
+        im->addGold();
+        getWorld()->playSound(SOUND_GOT_GOODIE);
+        setDead();
+        return;
+    }
     
     if (radius != nullptr && radius->canPickThingsUp())
         setVisible(true);
@@ -394,36 +469,62 @@ void WaterPool::doSomething()
         }
 }
 
-void Protester::moveInDirection(GraphObject::Direction dir) {
-    if (!isAlive()) return;
-        setVisible(true);
-
-    IceMan* iceman = getWorld()->getIceMan();
-    if (iceman && isAlive()) {
-        int dx = iceman->getX() - getX();
-        int dy = iceman->getY() - getY();
-        double dist = sqrt(dx * dx + dy * dy);
-
-        if (dist <= 4.0) {
-            getWorld()->playSound(SOUND_PROTESTER_YELL);
-            iceman->annoy(2); // Yell does 2 HP damage (if your spec uses this)
-            return; // end tick here if needed
-        }
+bool Protester::moveInDirection(GraphObject::Direction dir) {
+    int nx = getX(), ny = getY();
+    switch (dir) {
+        case up:    ++ny; break;
+        case down:  --ny; break;
+        case left:  --nx; break;
+        case right: ++nx; break;
+        default:    return false;
     }
-    
-        m_ticksAlive++;
 
-    int R = std::max(100, 500 - 10 * getWorld()->getCurrentGameLevel());
-    
-    if (m_ticksAlive >= R && !isLeaving()) {
-        getWorld()->determineFirstMoveToExit(60, 0);
-        return;
+    if (nx < 0 || nx > 60 || ny < 0 || ny > 56)                 return false;
+    if (!getWorld()->canActorMoveTo(this, nx, ny))              return false;
+
+    setDirection(dir);
+    moveTo(nx, ny);
+    return true;
+}
+
+bool Protester::annoy(unsigned int amt)
+{
+    if (!isAlive()) return false;
+
+    m_hitPoints -= amt;
+
+    if (m_hitPoints <= 0)          // going home
+    {
+        getWorld()->playSound(SOUND_PROTESTER_GIVE_UP);
+        setLeaving();
+        return true;
     }
+
+    // still alive → stunned N ticks
+    getWorld()->playSound(SOUND_PROTESTER_ANNOYED);
+    m_restTicks = std::max(50,100-10*getWorld()->getCurrentGameLevel());
+    return false;
 }
 
 void RegularProtester::doSomething()
 {
     if (!isAlive()) return;
+    
+    if (m_restTicks > 0)   { --m_restTicks; return; }     // stunned
+    if (m_yellCool   > 0)  { --m_yellCool;             } // cool-down
+    ++m_ticksAlive;
+
+    // leave–timer
+    int R = std::max(100,500-10*getWorld()->getCurrentGameLevel());
+    if (!m_leaving && m_ticksAlive>=R && !isHardcore())
+        setLeaving();
+
+    if (m_leaving)
+    {
+        Direction d = getWorld()->determineFirstMoveToExit(getX(),getY());
+        if (d==none) { setDead(); return; }               // reached exit
+        moveInDirection(d); return;
+    }
     
     setVisible(true);
     
@@ -446,9 +547,6 @@ void RegularProtester::doSomething()
             }
         }
     }
-       // The max allowed ticks before leaving:
-        int R = std::max(100, 500 - 10 * getWorld()->getCurrentGameLevel());
-
         if (m_ticksAlive >= R) {
             // Time to leave, call determineFirstMoveToExit to move towards exit
             GraphObject::Direction dir = getWorld()->determineFirstMoveToExit(getX(), getY());
@@ -462,14 +560,63 @@ void RegularProtester::doSomething()
             }
             return;  // Skip normal behavior since it's leaving
         }
+    GraphObject::Direction dir = GraphObject::none;
+    IceMan* im = getWorld()->getIceMan();
+    if (im && inRadius(getX(),getY(),im->getX(),im->getY(),4.0) &&
+        getWorld()->facingTowardIceMan(this) && m_yellCool==0)
+    {
+        getWorld()->playSound(SOUND_PROTESTER_YELL);
+        getWorld()->annoyIceMan(isHardcore()?15:5);
+        m_yellCool=15;    // spec cool-down
+        return;
+    }
+    if (!isHardcore())
+    {
+        if (inRadius(getX(),getY(),im->getX(),im->getY(),4.0))
+            moveInDirection(getWorld()->determineFirstMoveToIceMan(getX(),getY()));
+        else
+            /* 1) direct LOS toward IceMan?  already covered by yell above. */
+
+            /* 2) otherwise, if IceMan within 4 units, take the first BFS step */
+            if (im && inRadius(getX(), getY(), im->getX(), im->getY(), 4.0))
+                dir = getWorld()->determineFirstMoveToIceMan(getX(), getY());
+
+            /* 3) fallback: keep walking the way we’re facing if still clear, else turn */
+            if (dir == none) dir = getDirection();                // continue straight
+            if (!moveInDirection(dir))                                       // blocked → pick new
+            {
+                GraphObject::Direction cand[4] = {up, right, down, left};
+                for (int i = 0; i < 4 && dir==none; ++i)
+                    if (moveInDirection(cand[i])) dir = cand[i];
+            }
+
+            /* If we got here AND dir==none, we couldn’t move this tick – that’s okay */
+            return;
+     
+    }
 }
 
 
 void HardcoreProtester::doSomething()
 {
-    if (!isAlive()) return;
-    
     setVisible(true);
+    
+    if (!isAlive()) return;
+    if (m_restTicks > 0)   { --m_restTicks; return; }     // stunned
+    if (m_yellCool   > 0)  { --m_yellCool;             } // cool-down
+    ++m_ticksAlive;
+
+    // leave–timer
+    int R = std::max(100,500-10*getWorld()->getCurrentGameLevel());
+    if (!m_leaving && m_ticksAlive>=R && !isHardcore())
+        setLeaving();
+
+    if (m_leaving)
+    {
+        Direction d = getWorld()->determineFirstMoveToExit(getX(),getY());
+        if (d==none) { setDead(); return; }               // reached exit
+        moveInDirection(d); return;
+    }
     
     
     IceMan* iceman = getWorld()->getIceMan();
@@ -492,6 +639,18 @@ void HardcoreProtester::doSomething()
         }
         
     }
+    
+    IceMan* im = getWorld()->getIceMan();
+    if (im && inRadius(getX(),getY(),im->getX(),im->getY(),4.0) &&
+        getWorld()->facingTowardIceMan(this) && m_yellCool==0)
+    {
+        getWorld()->playSound(SOUND_PROTESTER_YELL);
+        getWorld()->annoyIceMan(isHardcore()?15:5);
+        m_yellCool=15;    // spec cool-down
+        return;
+    }
+    
+    moveInDirection(getWorld()->determineFirstMoveToIceMan(getX(),getY()));
 }
 void RegularProtester::move(){;}
 void RegularProtester:: addGold(){;}
@@ -511,4 +670,5 @@ void RegularProtester::receiveBribe() {
 }
 
 void RegularProtester::setLeaving() { m_leaving = true; }
+
 //end of Actor.cpp
