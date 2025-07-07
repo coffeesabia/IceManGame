@@ -1,15 +1,12 @@
-//start of Actor.h
 #ifndef ACTOR_H_
 #define ACTOR_H_
 
 #include "GraphObject.h"
+
 inline bool inRadius(int x1,int y1,int x2,int y2,double r)
 {
     return ( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) ) <= r*r;
 }
-
-// Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
-
 
 class StudentWorld;
 
@@ -40,26 +37,10 @@ class StudentWorld;
        // Get this actor's world
      StudentWorld* getWorld() const{return m_world;}
      
-       // Can other actors pass through this actor?
-     virtual bool canActorsPassThroughMe() const {return 0;}
-     
-       // Can this actor dig through Ice?
-     virtual bool canDigThroughIce() const {return false;}
-     
        // Can this actor pick items up?
      virtual bool canPickThingsUp() const {return false;}
-     
-       // Does this actor hunt the IceMan?
-     virtual bool huntsIceMan() const {return false;}
-     
-       // Can this actor need to be picked up to finish the level?
-     virtual bool needsToBePickedUpToFinishLevel() const {return false;}
-
-       // Move this actor to x,y if possible, and return true; otherwise,
-       // return false without moving.
-     bool moveToIfPossible(int x, int y){return false;}
-     
-     private:
+    
+ private:
         StudentWorld* m_world;
         bool m_alive;
  };
@@ -100,7 +81,7 @@ class Boulder : public Actor {
 public:
     
     Boulder(int startX, int startY, StudentWorld* sw)
-        : Actor(sw, startX, startY, right, true, IID_BOULDER, 1.0, 0), m_state(STABLE), m_waitTicks(0)
+        : Actor(sw, startX, startY, right, true, IID_BOULDER, 1.0, 0), m_state(STABLE)
     {
         setVisible(isVisible());
     }
@@ -110,12 +91,11 @@ public:
     virtual void doSomething();
     
     virtual void move(){}
-    virtual bool canActorsPassThroughMe() const{return false;}
     
     private:
-    enum State { STABLE, WAITING, FALLING, DONE };
+    enum State {STABLE, WAITING, FALLING};
     State m_state;
-    int m_waitTicks;
+    int m_waitTicks = 0;
 };
 
  class Squirt : public Actor
@@ -142,11 +122,6 @@ public:
                      bool activateOnProtester, bool initiallyActive): Actor(world, startX, startY, right, true, imageID, 1.0, 2){;}
     
     virtual void move(){;}
-   // virtual void addBarrels(){;}
-   // virtual unsigned int getBarrels() const {return 0;}
-    
-    // Set number of ticks until this object dies
-    void setTicksToLive(){;}
 };
 
 
@@ -158,33 +133,33 @@ public:
     
     virtual ~IceMan() {;}
     
-    virtual void doSomething();
+    virtual void doSomething() override;
     virtual void giveUp(){}
     
-    virtual void move(){}
+    virtual void move()override{;}
     //virtual bool annoy(unsigned int amount){return false;}
-    virtual bool canDigThroughIce() const{return true;}
+    
     virtual bool canPickThingsUp() const override { return true; }
-
-      // Pick up a sonar kit.
+    
+    // Pick up a sonar kit.
     virtual void addSonar(){m_sonar++;}
-
-      // Pick up water.
+    
+    // Pick up water.
     void addWater(){
         m_water += 5;
         //m_water++;
     }
-
+    
     //increment gold
     void addGold() override { m_gold++; }
     
     // Get amount of gold
     unsigned int getGold() const {return m_gold;}
     
-      // Get amount of sonar charges
+    // Get amount of sonar charges
     unsigned int getSonar() const{return m_sonar;}
-
-      // Get amount of water
+    
+    // Get amount of water
     unsigned int getWater() const{return m_water;}
     
     unsigned int getHealth() const{return m_health;}
@@ -192,13 +167,12 @@ public:
     virtual void addBarrels(){m_barrels++;}
     
     virtual void annoy(int m_points);
-  
+    
 private:
     unsigned int m_gold;
     unsigned int m_barrels;
     unsigned int m_sonar;
     unsigned int m_water;
-    
     unsigned int m_points;
     unsigned int m_health = 100;
     
@@ -216,32 +190,25 @@ public:
             setDirection(left);
         }
 
-        virtual void move() override {;}  // may be unused
-        virtual void addGold() override {;}
-        virtual bool canPickThingsUp() const override { return false; }
+        virtual void move() override {;}
+        virtual void addGold() override;
+        virtual bool canPickThingsUp() const override { return true; }
 
-         virtual void doSomething(){;}
+         virtual void doSomething() override {;}
 
-        virtual bool annoy(unsigned int amount);
+        virtual bool annoy(unsigned int amount) override;
 
-        virtual bool isHardcore() const { return false; }
-    
-        void pickupGold(bool isHardcore);
-      // Set number of ticks until next move
-        void setTicksToNextMove();
-    
-        bool isLeaving() const { return m_leaving; }
         void setLeaving() { m_leaving = true; }
-        void incrementLifetime() { m_ticksAlive++; }
-        int getLifetime() const { return m_ticksAlive; }
+        virtual void receiveBribe() = 0;
     
         bool moveInDirection(GraphObject::Direction dir);
+        void setStunned(int t) { m_restTicks = t; }
     
 protected:
     int   m_hitPoints;
-    int   m_restTicks;          // >0 ⇒ “stunned / resting”
-    bool  m_leaving   = false;  // true ⇒ heading for the exit
-    int   m_ticksAlive= 0;      // life-time (for the R-timer rule)
+    int   m_restTicks;
+    bool  m_leaving   = false;
+    int   m_ticksAlive= 0;
     int   m_yellCool  = 0;
 };
 
@@ -255,7 +222,6 @@ public:
     virtual ~OilBarrel() {;}
     virtual void doSomething();
     virtual void move(){;}
-    virtual bool needsToBePickedUpToFinishLevel() const{return true;}
 };
 
 class GoldNugget:public ActivatingObject
@@ -307,12 +273,12 @@ private:
 class RegularProtester : public Protester {
 public:
     
-    RegularProtester(int startX, int startY, StudentWorld* sw): Protester(sw, 60, 61, IID_PROTESTER, 5, 0){setVisible(isVisible());}
+    RegularProtester(int startX, int startY, StudentWorld* sw): Protester(sw, startX, startY, IID_PROTESTER, 5, 0){setVisible(isVisible());}
     
     virtual ~RegularProtester() {;}
     
     virtual void move();
-    virtual void addGold();
+   // virtual void addGold();
     
     virtual void doSomething();
     virtual void giveUp();
@@ -325,47 +291,35 @@ public:
 private:
     bool m_leaving = false;
     int m_ticksAlive = 0;
+    int m_moveCool = 0;
 };
 
 class HardcoreProtester : public Protester {
 public:
     
-    HardcoreProtester(int startX, int startY, StudentWorld* sw): Protester(sw, 60, 61, IID_HARD_CORE_PROTESTER, 20, 0){setVisible(isVisible());}
+    HardcoreProtester(int startX, int startY, StudentWorld* sw): Protester(sw, startX, startY, IID_HARD_CORE_PROTESTER, 20, 0){setVisible(isVisible());}
     
     virtual ~HardcoreProtester() {;}
     
-    virtual void move(){;}
+    virtual void move() override {;}
     
-    virtual void addGold(){}
+   // virtual void addGold(){}
     
-    virtual void doSomething();
+    virtual void doSomething() override;
     virtual void giveUp(){}
-    
-    bool isHardcore() const override { return true; }
-    
-    int annoyCount;
-        int bribeCount;
+   
+    virtual bool annoy(unsigned int amount) override;
 
-        virtual bool annoy(unsigned int amount) override {
-            annoyCount++;
-            bool dead = Protester::annoy(amount);
-            if (annoyCount >= 3 || dead) {
-                setDead();
-            }
-            return dead;
-        }
-
-        void receiveBribe() {
-            bribeCount++;
-            if (bribeCount >= 2)
-                setDead();
-        }
+    void receiveBribe()override;
     
     virtual void setLeaving() { m_leaving = true; }
     
 private:
     bool m_leaving = false;
+    int m_moveCool = 0;
+    int m_annoyCount = 0;
+    int m_bribeCount = 0;
+
 };
 
 #endif //ACTOR_H
-//end of Actor.h
