@@ -3,6 +3,10 @@
 #define ACTOR_H_
 
 #include "GraphObject.h"
+inline bool inRadius(int x1,int y1,int x2,int y2,double r)
+{
+    return ( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) ) <= r*r;
+}
 
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
@@ -218,7 +222,7 @@ public:
 
          virtual void doSomething(){;}
 
-        virtual bool annoy(unsigned int amount){return false;}
+        virtual bool annoy(unsigned int amount);
 
         virtual bool isHardcore() const { return false; }
     
@@ -231,13 +235,14 @@ public:
         void incrementLifetime() { m_ticksAlive++; }
         int getLifetime() const { return m_ticksAlive; }
     
-        void moveInDirection(GraphObject::Direction dir);
+        bool moveInDirection(GraphObject::Direction dir);
     
 protected:
-    int m_restTicks;
-    int m_hitPoints = 0;
-    bool m_leaving = false;
-    int m_ticksAlive = 0;
+    int   m_hitPoints;
+    int   m_restTicks;          // >0 ⇒ “stunned / resting”
+    bool  m_leaving   = false;  // true ⇒ heading for the exit
+    int   m_ticksAlive= 0;      // life-time (for the R-timer rule)
+    int   m_yellCool  = 0;
 };
 
 class OilBarrel : public ActivatingObject
@@ -256,13 +261,17 @@ public:
 class GoldNugget:public ActivatingObject
 {
 public:
-    GoldNugget(int startX, int startY, StudentWorld* sw, bool isVisible, bool canPick): ActivatingObject(sw, startX, startY, IID_GOLD, SOUND_PROTESTER_FOUND_GOLD, false, true, false)
+    GoldNugget(int startX, int startY, StudentWorld* sw, bool isVisible, bool canPick, bool dropped): ActivatingObject(sw, startX, startY, IID_GOLD, SOUND_PROTESTER_FOUND_GOLD, false, true, false), m_droppedByIceMan(dropped)
     {
         setVisible(!isVisible);
     }
     virtual ~GoldNugget() {;}
     virtual void doSomething();
     virtual void move(){;}
+    bool wasDropped() const { return m_droppedByIceMan; }
+    
+private:
+    bool m_droppedByIceMan = false;
 };
 
 class SonarKit : public ActivatingObject
